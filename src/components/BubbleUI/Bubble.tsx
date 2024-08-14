@@ -53,9 +53,6 @@ class ObjectBubble {
     const dx = this.x - otherBubble.x;
     const dy = this.y - otherBubble.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    // if (this.size > 200 && distance < this.size) {
-    //   console.log(dx, dy, distance, this.size)
-    // }
     return distance < (this.size + otherBubble.size) / 2;
   }
 
@@ -68,7 +65,6 @@ class ObjectBubble {
     // Normalize the vector
     const nx = dx / distance;
     const ny = dy / distance;
-    if (this.size > 200) {console.log(this.isStopped)}
 
     // Separate the shapes to avoid sticking
     if (!this.isStopped) {
@@ -196,7 +192,7 @@ class CoordinateSystem {
       id: bubble.id,
       x: bubble.x,
       y: bubble.y,
-      size: bubble.size
+      size: bubble.size,
     }));
   }
 
@@ -257,6 +253,13 @@ class CoordinateSystem {
     bubble?.endFocus();
     this.focusedBubbleId = undefined;
   }
+
+  public stopFocusBubbleIfNeeded() {
+    if (!this.focusedBubbleId) return;
+    const bubble = this.getBubble(this.focusedBubbleId);
+    bubble?.endFocus();
+    this.focusedBubbleId = undefined;
+  }
 }
 
 interface ShapeProps {
@@ -279,8 +282,7 @@ export const BubbleUI = (props: ShapeProps) => {
       setShapesState(system.getCoordinates());
       updatePositionRequestRef.current = requestAnimationFrame(updatePosition);
     };
-
-    updatePositionRequestRef.current = requestAnimationFrame(updatePosition);
+    updatePosition();
     return () => cancelAnimationFrame(updatePositionRequestRef.current || 0);
   }, []);
 
@@ -314,50 +316,66 @@ export const BubbleUI = (props: ShapeProps) => {
     }
   };
 
+  const onOutsideClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    e.preventDefault();
+    const overlay = document.querySelector('#coordinate-system-bubbles');
+    if (e.target === overlay) {
+      system.stopFocusBubbleIfNeeded();
+    }
+  };
+
   /**
    * There's consecutive events trigger when dragging:
    *  onMouseDown => onStart => onDrag => onStop => onClick (of the children)
    */
-  return bubblesState.map((bubble) => (
-    <Draggable
-      cancel=".focused"
-      onStart={(_e, data) => onStart(data, bubble.id)}
-      onStop={(_e, data) => onStop(data, bubble.id)}
-      onDrag={(_e, data) => onDrag(bubble.id, data)}
-      position={{ x: bubble.x, y: bubble.y }}
-      bounds={{
-        top: 0,
-        left: 0,
-        right: window.innerWidth - size,
-        bottom: window.innerHeight - size,
-      }}
-      onMouseDown={(_e) => {
-        if (system.isBubbleFocused(bubble.id)) {
-          system.stopFocus(bubble.id);
-        }
-      }}
+  return (
+    <div
+      id="coordinate-system-bubbles"
+      onClick={onOutsideClick}
     >
-      <div
-        onMouseEnter={() => {
-          system.stopBubble(bubble.id);
-        }}
-        onMouseLeave={(_e) => system.resumeBubble(bubble.id)}
-        style={{
-          transform: `translate(${bubble.x}px, ${bubble.y}px)`,
-        }}
-        key={bubble.id}
-        className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
-      >
-        {/* <img src='./test.png' /> */}
-
-        <Bubble
-          imageUrl="./test.png"
-          type="birthday"
-          focused={system.isBubbleFocused(bubble.id)}
-        />
-      </div>
-    </Draggable>
-  ));
+      {bubblesState.map((bubble) => {
+        return (
+          <Draggable
+            disabled={system.isBubbleFocused(bubble.id)}
+            onStart={(_e, data) => onStart(data, bubble.id)}
+            onStop={(_e, data) => onStop(data, bubble.id)}
+            onDrag={(_e, data) => onDrag(bubble.id, data)}
+            position={{ x: bubble.x, y: bubble.y }}
+            bounds={{
+              top: 0,
+              left: 0,
+              right: window.innerWidth - size,
+              bottom: window.innerHeight - size,
+            }}
+            onMouseDown={(_e) => {
+              if (system.isBubbleFocused(bubble.id)) {
+                system.stopFocus(bubble.id);
+              }
+            }}
+          >
+            <div
+              onMouseEnter={() => {
+                system.stopBubble(bubble.id);
+              }}
+              onMouseLeave={(_e) => system.resumeBubble(bubble.id)}
+              
+              key={bubble.id}
+              className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
+            >
+              {/* <img src='./test.png' /> */}
+              <div className="pointer-events-none">
+                <Bubble
+                  imageUrl="./king.svg"
+                  type="birthday"
+                  focused={system.isBubbleFocused(bubble.id)}
+                />
+              </div>
+            </div>
+          </Draggable>
+        );
+      })}
+    </div>
+  );
 };
 
 interface IShape {
