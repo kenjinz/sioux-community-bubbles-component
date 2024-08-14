@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
+import Draggable, { DraggableData } from 'react-draggable';
 import { Bubble } from 'sioux-community-browse-ui-v1';
 
 class ObjectBubble {
