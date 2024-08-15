@@ -7,7 +7,7 @@ import { BubbleSystem } from './BubbleSystem';
 import { Bubble } from 'sioux-community-browse-ui-v1';
 import { ItemData } from 'sioux-community-bubbles-component';
 
-const data: ItemData[] = Array.from({ length: 10 }).map(() => ({
+const data: ItemData[] = Array.from({ length: 60 }).map(() => ({
   imgUrl: './king.svg',
   type: 'birthday',
 }));
