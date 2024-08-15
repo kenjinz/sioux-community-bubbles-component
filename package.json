@@ -1,6 +1,6 @@
 {
   "name": "sioux-community-bubbles-component",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "main": "dist/my-react-ui-lib.umd.js",
   "module": "dist/my-react-ui-lib.es.js",
