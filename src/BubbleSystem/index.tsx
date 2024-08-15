@@ -262,16 +262,50 @@ class CoordinateSystem {
   }
 }
 
+/**
+ * The data for bubble item
+ */
 export interface ItemData {
+  /**
+   * Data Image source
+   */
   imgUrl: string;
+  /**
+   * Data type
+   */
   type: 'birthday' | 'normal' | 'workAnniversary' | 'sponsor' | undefined;
+
+  /**
+   * Indicate whether it's focused or not
+   */
   focused?: boolean;
+
+  /**
+   * Work anniversary years
+   */
   workAnniversaryYears?: number;
 }
 
+/**
+ * Bubble system props
+ */
 export interface BubbleSystemProps {
+  /**
+   * The size of a bubble.
+   * All the bubble will have same size.
+   */
   itemSize: number;
+
+  /**
+   * Array of bubble data
+   */
   items: ItemData[];
+
+  /**
+   * The function to render the bubble
+   * @param item - The data for rendering bubble
+   * @returns The rendered bubble
+   */
   renderItem: (item: ItemData) => ReactNode;
 }
 
@@ -337,7 +371,11 @@ export const BubbleSystem = (props: BubbleSystemProps) => {
    *  onMouseDown => onStart => onDrag => onStop => onClick (of the children)
    */
   return (
-    <div className='w-full h-full' id="coordinate-system-bubbles" onClick={onOutsideClick}>
+    <div
+      className="w-full h-full"
+      id="coordinate-system-bubbles"
+      onClick={onOutsideClick}
+    >
       {bubblesState.map((bubble) => {
         return (
           <Draggable

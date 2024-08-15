@@ -3,14 +3,14 @@ import { createRoot } from 'react-dom/client';
 
 import './index.css';
 import 'sioux-community-browse-ui-v1/dist/style.css';
-// import { BubbleSystem } from './BubbleSystem';
+import { BubbleSystem } from './BubbleSystem';
 import { Bubble } from 'sioux-community-browse-ui-v1';
-import { BubbleSystem, ItemData } from 'sioux-community-bubbles-component';
+import { ItemData } from 'sioux-community-bubbles-component';
 
-const data: ItemData[] = Array.from({length: 10}).map(() => ({
+const data: ItemData[] = Array.from({ length: 10 }).map(() => ({
   imgUrl: './king.svg',
-  type: 'birthday'
-}))
+  type: 'birthday',
+}));
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <div className="w-screen h-screen overflow-hidden">
