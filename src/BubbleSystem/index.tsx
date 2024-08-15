@@ -1,7 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
-import Draggable, { DraggableData } from 'react-draggable';
+type Size =  {
+ width: number;
+ height: number 
+}
 
 class ObjectBubble {
   public size: number;
@@ -9,25 +12,44 @@ class ObjectBubble {
   public x: number;
   public y: number;
   public data: ItemData;
+  private boundaries: Size;
 
   private vx: number;
   private vy: number;
   private isStopped: boolean;
-  private isDragging: boolean;
+  public isDragging: boolean;
+
+  private isMouseDown: boolean;
+  private dragThreshold: number;
+  private startX: number;
+  private startY: number;
+  private offsetX: number;
+  private offsetY: number;
 
   public isFocused: boolean;
 
-  constructor(id: string, size: number, data: ItemData) {
+  constructor(id: string, size: number, data: ItemData, boundaries?: Size) {
     this.id = id;
     this.data = data;
     this.size = size; // Size of the shape
-    this.x = Math.floor(Math.random() * (window.innerWidth - this.size));
-    this.y = Math.floor(Math.random() * (window.innerHeight - this.size));
+    this.boundaries = {
+      width: boundaries?.width || window.innerWidth,
+      height: boundaries?.height || window.innerHeight
+    }
+    this.x = Math.floor(Math.random() * (this.boundaries.width - this.size));
+    this.y = Math.floor(Math.random() * (this.boundaries.height - this.size));
     this.vx = 1; // Velocity in x-direction
     this.vy = 1; // Velocity in y-direction
     this.isStopped = false; // Flag to check if the shape is stopped
     this.isDragging = false; // Flag to check if the shape is being dragged
     this.isFocused = false;
+    this.isMouseDown = false; // Flag to check if the mouse button is held down
+    this.dragThreshold = 5; // Minimum movement in pixels to start dragging
+    this.startX = 0; // Initial mouse x position when dragging starts
+    this.startY = 0; // Initial mouse y position when dragging starts
+    this.offsetX = 0;
+    this.offsetY = 0;
+
     this.updatePosition();
   }
 
@@ -37,11 +59,11 @@ class ObjectBubble {
       this.y += this.vy;
 
       // Bounce off the edges
-      if (this.x <= 0 || this.x >= window.innerWidth - this.size) {
+      if (this.x <= 0 || this.x >= this.boundaries.width - this.size) {
         this.x -= this.vx;
         this.vx *= -1;
       }
-      if (this.y <= 0 || this.y >= window.innerHeight - this.size) {
+      if (this.y <= 0 || this.y >= this.boundaries.height - this.size) {
         this.y -= this.vy;
         this.vy *= -1;
       }
@@ -130,10 +152,11 @@ class ObjectBubble {
   }
 
   startFocus() {
-    if (this.isFocused) return;
+    if (this.isFocused ) return;
 
     this.isStopped = true;
     this.isFocused = true;
+    this.isMouseDown = false;
     this.x = window.innerWidth / 2;
     this.y = window.innerHeight / 2;
     // Here's is the scale size, should be either props or hard code, will check.
@@ -141,11 +164,11 @@ class ObjectBubble {
   }
 
   endFocus() {
-    if (!this.isFocused) return;
-
+    if (!this.isFocused || this.isDragging) return;
     this.isFocused = false;
     this.isStopped = false;
     this.isDragging = false;
+    this.isMouseDown = false;
 
     this.size /= 3;
   }
@@ -154,12 +177,38 @@ class ObjectBubble {
     this.isDragging = true;
   }
 
-  drag(x: number, y: number) {
-    this.x = x;
-    this.y = y;
+  startMouseDown(e: any) {
+    this.isMouseDown = true;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.offsetX = e.clientX - this.x;
+    this.offsetY = e.clientY - this.y;
+  }
+
+  checkDrag(e: any) {
+    if (this.isMouseDown && !this.isFocused) {
+      const moveX = e.clientX - this.startX;
+      const moveY = e.clientY - this.startY;
+      const distance = Math.sqrt(moveX * moveX + moveY * moveY);
+
+      if (distance > this.dragThreshold) {
+        this.isDragging = true;
+        this.isStopped = true;
+        this.drag(e);
+      }
+    }
+  }
+
+  drag(e: any) {
+    if (this.isDragging) {
+      this.x = e.clientX - this.offsetX;
+      this.y = e.clientY - this.offsetY;
+      this.updatePosition();
+    }
   }
 
   endDrag() {
+    this.isMouseDown = false;
     if (this.isDragging) {
       this.isDragging = false;
       this.isStopped = false;
@@ -171,13 +220,13 @@ class CoordinateSystem {
   private bubbles: ObjectBubble[] = [];
   private focusedBubbleId?: string;
 
-  constructor(bubbles: ItemData[], size: number) {
-    this.initBubbles(bubbles, size);
+  constructor(bubbles: ItemData[], size: number, boundaries?: Size) {
+    this.initBubbles(bubbles, size, boundaries);
   }
 
-  private initBubbles(bubbles: ItemData[], size: number) {
+  private initBubbles(bubbles: ItemData[], size: number, boundaries?: Size) {
     for (let i = 0; i < bubbles.length; i++) {
-      const bubble = new ObjectBubble(uuid(), size, bubbles[i]);
+      const bubble = new ObjectBubble(uuid(), size, bubbles[i], boundaries);
       this.bubbles.push(bubble);
     }
   }
@@ -218,17 +267,18 @@ class CoordinateSystem {
     bubble?.resume();
   }
 
-  public startDragBubble(id: string) {
+  public onMouseUp(id: string) {
     const bubble = this.getBubble(id);
-    bubble?.startDrag();
+    if (!bubble) return;
+
+    if (bubble.isDragging) {
+      this.endDrag(id);
+    } else {
+      this.focus(id);
+    }
   }
 
-  public dragBubble(id: string, x: number, y: number) {
-    const bubble = this.getBubble(id);
-    bubble?.drag(x, y);
-  }
-
-  public endDragBubble(id: string) {
+  private endDrag(id: string) {
     const bubble = this.getBubble(id);
     bubble?.endDrag();
   }
@@ -238,7 +288,16 @@ class CoordinateSystem {
     return bubble?.isFocused ?? false;
   }
 
-  public startFocus(id: string) {
+  private focus(id: string) {
+    if (this.focusedBubbleId && this.focusedBubbleId === id) {
+      this.stopFocus(id);
+      return;
+    }
+
+    this.startFocus(id);
+  }
+
+  private startFocus(id: string) {
     if (this.focusedBubbleId) {
       this.stopFocus(this.focusedBubbleId);
     }
@@ -248,17 +307,28 @@ class CoordinateSystem {
     this.focusedBubbleId = id;
   }
 
-  public stopFocus(id: string) {
+  private stopFocus(id: string) {
     const bubble = this.getBubble(id);
     bubble?.endFocus();
     this.focusedBubbleId = undefined;
   }
-
+  
   public stopFocusBubbleIfNeeded() {
     if (!this.focusedBubbleId) return;
     const bubble = this.getBubble(this.focusedBubbleId);
     bubble?.endFocus();
     this.focusedBubbleId = undefined;
+  }
+
+  public startMouseDown(id: string, e: any) {
+    const bubble = this.getBubble(id);
+    bubble?.startMouseDown(e);
+  }
+
+  public checkDrag(id: string, e: any) {
+    if (this.focusedBubbleId === id) return;
+    const bubble = this.getBubble(id);
+    bubble?.checkDrag(e);
   }
 }
 
@@ -307,16 +377,25 @@ export interface BubbleSystemProps {
    * @returns The rendered bubble
    */
   renderItem: (item: ItemData) => ReactNode;
+
+  /**
+   * The boundaries that bubble can move around
+   * 
+   * @default - The window size
+   */
+  boundaries?: {
+    width: number;
+    height: number
+  }
 }
 
 export const BubbleSystem = (props: BubbleSystemProps) => {
   const updatePositionRequestRef = useRef<number>();
   const { itemSize: size } = props;
-  const system = useMemo(() => new CoordinateSystem(props.items, size), []);
+  const system = useMemo(() => new CoordinateSystem(props.items, size, props.boundaries), []);
 
   const [bubblesState, setShapesState] = useState<IShape[]>([]);
-
-  const dragStartPositionXYRef = useRef<{ x: number; y: number }>();
+  const [draggingBubbleId, setDraggingBubbleId] = useState('');
 
   useEffect(() => {
     const updatePosition = () => {
@@ -328,38 +407,18 @@ export const BubbleSystem = (props: BubbleSystemProps) => {
     return () => cancelAnimationFrame(updatePositionRequestRef.current || 0);
   }, []);
 
-  const onStart = (data: DraggableData, id: string) => {
-    dragStartPositionXYRef.current = { x: data.x, y: data.y };
-    system.startDragBubble(id);
-  };
-
-  const onDrag = (id: string, data: DraggableData) => {
-    const { x, y } = data;
-    system.dragBubble(id, x, y);
-  };
-
-  /**
-   * If it's dragging, this function will end the drag bubble
-   * If it's not, this function will focus the bubble
-   */
-  const onStop = (data: DraggableData, id: string) => {
-    if (!dragStartPositionXYRef.current) return;
-    const THRESHOLD = 2;
-
-    const { x: startX, y: startY } = dragStartPositionXYRef.current;
-    const { x, y } = data;
-    const wasDragged =
-      Math.abs(x - startX) > THRESHOLD && Math.abs(y - startY) > THRESHOLD;
-
-    if (!wasDragged) {
-      system.startFocus(id);
-    } else {
-      system.endDragBubble(id);
-    }
-  };
+  useEffect(() => {
+    const registerEvent = () => {
+      document.addEventListener('mousemove', (e) => {
+        system.checkDrag(draggingBubbleId, e);
+      });
+    };
+    registerEvent();
+  }, [draggingBubbleId]);
 
   const onOutsideClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     e.preventDefault();
+    e.stopPropagation();
     const overlay = document.querySelector('#coordinate-system-bubbles');
     if (e.target === overlay) {
       system.stopFocusBubbleIfNeeded();
@@ -378,40 +437,32 @@ export const BubbleSystem = (props: BubbleSystemProps) => {
     >
       {bubblesState.map((bubble) => {
         return (
-          <Draggable
-            disabled={system.isBubbleFocused(bubble.id)}
-            onStart={(_e, data) => onStart(data, bubble.id)}
-            onStop={(_e, data) => onStop(data, bubble.id)}
-            onDrag={(_e, data) => onDrag(bubble.id, data)}
-            position={{ x: bubble.x, y: bubble.y }}
-            bounds={{
-              top: 0,
-              left: 0,
-              right: window.innerWidth - size,
-              bottom: window.innerHeight - size,
+          <div
+            onMouseEnter={() => {
+              system.stopBubble(bubble.id);
             }}
-            onMouseDown={(_e) => {
-              if (system.isBubbleFocused(bubble.id)) {
-                system.stopFocus(bubble.id);
-              }
+            onMouseLeave={(_e) => system.resumeBubble(bubble.id)}
+            onMouseDown={(e) => {
+              system.startMouseDown(bubble.id, e);
+              setDraggingBubbleId(bubble.id);
             }}
+            onMouseUp={(_e) => {
+              system.onMouseUp(bubble.id);
+              setDraggingBubbleId('');
+            }}
+            key={bubble.id}
+            style={{
+              transform: `translate(${bubble.x}px, ${bubble.y}px)`,
+            }}
+            className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
           >
-            <div
-              onMouseEnter={() => {
-                system.stopBubble(bubble.id);
-              }}
-              onMouseLeave={(_e) => system.resumeBubble(bubble.id)}
-              key={bubble.id}
-              className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
-            >
-              <div className="pointer-events-none">
-                {props.renderItem({
-                  ...bubble.data,
-                  focused: system.isBubbleFocused(bubble.id),
-                })}
-              </div>
+            <div className="pointer-events-none select-none">
+              {props.renderItem({
+                ...bubble.data,
+                focused: system.isBubbleFocused(bubble.id),
+              })}
             </div>
-          </Draggable>
+          </div>
         );
       })}
     </div>
