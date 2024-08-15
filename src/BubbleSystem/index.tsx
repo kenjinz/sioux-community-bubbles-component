@@ -1,15 +1,14 @@
 import { v4 as uuid } from 'uuid';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 import Draggable, { DraggableData } from 'react-draggable';
-import { Bubble } from 'sioux-community-browse-ui-v1';
 
 class ObjectBubble {
   public size: number;
   public id: string;
   public x: number;
-
   public y: number;
+  public data: ItemData;
 
   private vx: number;
   private vy: number;
@@ -18,9 +17,9 @@ class ObjectBubble {
 
   public isFocused: boolean;
 
-  constructor(id: string, size: number) {
+  constructor(id: string, size: number, data: ItemData) {
     this.id = id;
-    // this.element = element;
+    this.data = data;
     this.size = size; // Size of the shape
     this.x = Math.floor(Math.random() * (window.innerWidth - this.size));
     this.y = Math.floor(Math.random() * (window.innerHeight - this.size));
@@ -172,13 +171,13 @@ class CoordinateSystem {
   private bubbles: ObjectBubble[] = [];
   private focusedBubbleId?: string;
 
-  constructor(bubblesNumber: number, size: number) {
-    this.initBubbles(bubblesNumber, size);
+  constructor(bubbles: ItemData[], size: number) {
+    this.initBubbles(bubbles, size);
   }
 
-  private initBubbles(bubbleNumber: number, size: number) {
-    for (let i = 0; i < bubbleNumber; i++) {
-      const bubble = new ObjectBubble(uuid(), size);
+  private initBubbles(bubbles: ItemData[], size: number) {
+    for (let i = 0; i < bubbles.length; i++) {
+      const bubble = new ObjectBubble(uuid(), size, bubbles[i]);
       this.bubbles.push(bubble);
     }
   }
@@ -193,6 +192,7 @@ class CoordinateSystem {
       x: bubble.x,
       y: bubble.y,
       size: bubble.size,
+      data: bubble.data,
     }));
   }
 
@@ -262,15 +262,23 @@ class CoordinateSystem {
   }
 }
 
-interface ShapeProps {
-  itemSize: number;
-  itemNumber: number;
-  // items: React.ReactNode[];
+export interface ItemData {
+  imgUrl: string;
+  type: 'birthday' | 'normal' | 'workAnniversary' | 'sponsor' | undefined;
+  focused?: boolean;
+  workAnniversaryYears?: number;
 }
-export const BubbleUI = (props: ShapeProps) => {
+
+export interface BubbleSystemProps {
+  itemSize: number;
+  items: ItemData[];
+  renderItem: (item: ItemData) => ReactNode;
+}
+
+export const BubbleSystem = (props: BubbleSystemProps) => {
   const updatePositionRequestRef = useRef<number>();
-  const { itemNumber, itemSize: size } = props;
-  const system = useMemo(() => new CoordinateSystem(itemNumber, size), []);
+  const { itemSize: size } = props;
+  const system = useMemo(() => new CoordinateSystem(props.items, size), []);
 
   const [bubblesState, setShapesState] = useState<IShape[]>([]);
 
@@ -329,10 +337,7 @@ export const BubbleUI = (props: ShapeProps) => {
    *  onMouseDown => onStart => onDrag => onStop => onClick (of the children)
    */
   return (
-    <div
-      id="coordinate-system-bubbles"
-      onClick={onOutsideClick}
-    >
+    <div className='w-full h-full' id="coordinate-system-bubbles" onClick={onOutsideClick}>
       {bubblesState.map((bubble) => {
         return (
           <Draggable
@@ -358,17 +363,14 @@ export const BubbleUI = (props: ShapeProps) => {
                 system.stopBubble(bubble.id);
               }}
               onMouseLeave={(_e) => system.resumeBubble(bubble.id)}
-              
               key={bubble.id}
               className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
             >
-              {/* <img src='./test.png' /> */}
               <div className="pointer-events-none">
-                <Bubble
-                  imageUrl="./king.svg"
-                  type="birthday"
-                  focused={system.isBubbleFocused(bubble.id)}
-                />
+                {props.renderItem({
+                  ...bubble.data,
+                  focused: system.isBubbleFocused(bubble.id),
+                })}
               </div>
             </div>
           </Draggable>
@@ -383,4 +385,5 @@ interface IShape {
   x: number;
   y: number;
   size: number;
+  data: ItemData;
 }

@@ -1,11 +1,13 @@
 {
-  "name": "balloon-component",
-  "private": true,
-  "version": "0.0.0",
+  "name": "sioux-community-bubbles-component",
+  "version": "1.0.2",
   "type": "module",
+  "main": "dist/my-react-ui-lib.umd.js",
+  "module": "dist/my-react-ui-lib.es.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build && tsc --project tsconfig.json",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -17,6 +19,7 @@
     "react-dom": "^18.3.1",
     "react-draggable": "^4.4.6",
     "sioux-community-browse-ui-v1": "^1.1.0",
+    "sioux-community-bubbles-component": "^1.0.2",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^10.0.0"
