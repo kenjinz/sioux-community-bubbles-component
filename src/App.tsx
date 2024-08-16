@@ -4,6 +4,7 @@ import { BubbleSystem, ItemData } from './BubbleSystem';
 const data: ItemData[] = Array.from({ length: 60 }).map(() => ({
   imgUrl: './king.svg',
   type: 'birthday',
+  abc: "string",
 }));
 function App() {
   return (

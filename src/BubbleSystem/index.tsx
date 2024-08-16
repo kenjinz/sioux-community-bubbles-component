@@ -6,12 +6,12 @@ type Size =  {
  height: number 
 }
 
-class ObjectBubble {
+class ObjectBubble<T> {
   public size: number;
   public id: string;
   public x: number;
   public y: number;
-  public data: ItemData;
+  public data: T;
   private boundaries: Size;
 
   private vx: number;
@@ -28,7 +28,7 @@ class ObjectBubble {
 
   public isFocused: boolean;
 
-  constructor(id: string, size: number, data: ItemData, boundaries?: Size) {
+  constructor(id: string, size: number, data: T, boundaries?: Size) {
     this.id = id;
     this.data = data;
     this.size = size; // Size of the shape
@@ -70,14 +70,14 @@ class ObjectBubble {
     }
   }
 
-  checkCollision(otherBubble: ObjectBubble) {
+  checkCollision(otherBubble: ObjectBubble<T>) {
     const dx = this.x - otherBubble.x;
     const dy = this.y - otherBubble.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     return distance < (this.size + otherBubble.size) / 2;
   }
 
-  resolveCollision(otherBubble: ObjectBubble) {
+  resolveCollision(otherBubble: ObjectBubble<T>) {
     const dx = otherBubble.x - this.x;
     const dy = otherBubble.y - this.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -216,15 +216,15 @@ class ObjectBubble {
   }
 }
 
-class CoordinateSystem {
-  private bubbles: ObjectBubble[] = [];
+class CoordinateSystem<T> {
+  private bubbles: ObjectBubble<T>[] = [];
   private focusedBubbleId?: string;
 
-  constructor(bubbles: ItemData[], size: number, boundaries?: Size) {
+  constructor(bubbles: T[], size: number, boundaries?: Size) {
     this.initBubbles(bubbles, size, boundaries);
   }
 
-  private initBubbles(bubbles: ItemData[], size: number, boundaries?: Size) {
+  private initBubbles(bubbles: T[], size: number, boundaries?: Size) {
     for (let i = 0; i < bubbles.length; i++) {
       const bubble = new ObjectBubble(uuid(), size, bubbles[i], boundaries);
       this.bubbles.push(bubble);
@@ -359,7 +359,7 @@ export interface ItemData {
 /**
  * Bubble system props
  */
-export interface BubbleSystemProps {
+export interface BubbleSystemProps<T> {
   /**
    * The size of a bubble.
    * All the bubble will have same size.
@@ -369,14 +369,14 @@ export interface BubbleSystemProps {
   /**
    * Array of bubble data
    */
-  items: ItemData[];
+  items: T[];
 
   /**
    * The function to render the bubble
    * @param item - The data for rendering bubble
    * @returns The rendered bubble
    */
-  renderItem: (item: ItemData) => ReactNode;
+  renderItem: (item: T) => ReactNode;
 
   /**
    * The boundaries that bubble can move around
@@ -389,12 +389,12 @@ export interface BubbleSystemProps {
   }
 }
 
-export const BubbleSystem = (props: BubbleSystemProps) => {
+export function BubbleSystem<T>(props: BubbleSystemProps<T>) {
   const updatePositionRequestRef = useRef<number>();
   const { itemSize: size } = props;
   const system = useMemo(() => new CoordinateSystem(props.items, size, props.boundaries), []);
 
-  const [bubblesState, setShapesState] = useState<IShape[]>([]);
+  const [bubblesState, setShapesState] = useState<IShape<T>[]>([]);
   const [draggingBubbleId, setDraggingBubbleId] = useState('');
 
   useEffect(() => {
@@ -457,10 +457,7 @@ export const BubbleSystem = (props: BubbleSystemProps) => {
             className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
           >
             <div className="pointer-events-none select-none">
-              {props.renderItem({
-                ...bubble.data,
-                focused: system.isBubbleFocused(bubble.id),
-              })}
+              {props.renderItem(bubble.data)}
             </div>
           </div>
         );
@@ -469,10 +466,10 @@ export const BubbleSystem = (props: BubbleSystemProps) => {
   );
 };
 
-interface IShape {
+interface IShape<T> {
   id: string;
   x: number;
   y: number;
   size: number;
-  data: ItemData;
+  data: T;
 }
