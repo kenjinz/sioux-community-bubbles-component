@@ -1,5 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Image, Layer, Stage, Star, Text } from 'react-konva';
+import useImage from 'use-image';
 
 type Size = {
   width: number;
@@ -185,32 +187,10 @@ class ObjectBubble {
     this.offsetY = e.clientY - this.y;
   }
 
-  startTouch(e: any) {
-    this.isMouseDown = true;
-    this.startX = e.touches[0].clientX;
-    this.startY = e.touches[0].clientY;
-    this.offsetX = e.touches[0].clientX - this.x;
-    this.offsetY = e.touches[0].clientY - this.y;
-  }
-
   checkDrag(e: any) {
     if (this.isMouseDown && !this.isFocused) {
       const moveX = e.clientX - this.startX;
       const moveY = e.clientY - this.startY;
-      const distance = Math.sqrt(moveX * moveX + moveY * moveY);
-
-      if (distance > this.dragThreshold) {
-        this.isDragging = true;
-        this.isStopped = true;
-        this.drag(e);
-      }
-    }
-  }
-
-  checkTouch(e: any) {
-    if (this.isMouseDown && !this.isFocused) {
-      const moveX = e.touches[0].clientX - this.startX;
-      const moveY = e.touches[0].clientY - this.startY;
       const distance = Math.sqrt(moveX * moveX + moveY * moveY);
 
       if (distance > this.dragThreshold) {
@@ -347,21 +327,10 @@ class CoordinateSystem {
     bubble?.startMouseDown(e);
   }
 
-  public startTouch(id: string, e: any) {
-    const bubble = this.getBubble(id);
-    bubble?.startTouch(e);
-  }
-
   public checkDrag(id: string, e: any) {
     if (this.focusedBubbleId === id) return;
     const bubble = this.getBubble(id);
     bubble?.checkDrag(e);
-  }
-  public checkTouch(id: string, e: any) {
-    if (this.focusedBubbleId === id) return;
-    // console.log(id)
-    const bubble = this.getBubble(id);
-    bubble?.checkTouch(e);
   }
 }
 
@@ -423,103 +392,53 @@ export interface BubbleSystemProps {
 }
 
 export const BubbleSystem = (props: BubbleSystemProps) => {
-  const updatePositionRequestRef = useRef<number>();
-  const { itemSize: size } = props;
-  const system = useMemo(
-    () => new CoordinateSystem(props.items, size, props.boundaries),
-    []
-  );
+  function generateShapes() {
+    return [...Array(10)].map((_, i) => ({
+      id: i.toString(),
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      rotation: Math.random() * 180,
+      isDragging: false,
+    }));
+  }
 
-  const [bubblesState, setShapesState] = useState<IShape[]>([]);
-  const [draggingBubbleId, setDraggingBubbleId] = useState('');
-
-  useEffect(() => {
-    const updatePosition = () => {
-      system.updatePosition();
-      setShapesState(system.getCoordinates());
-      updatePositionRequestRef.current = requestAnimationFrame(updatePosition);
-    };
-    updatePosition();
-    return () => cancelAnimationFrame(updatePositionRequestRef.current || 0);
-  }, []);
-
-  useEffect(() => {
-    const registerEvent = () => {
-      document.addEventListener('mousemove', (e) => {
-        system.checkDrag(draggingBubbleId, e);
-      });
-      // document.addEventListener('touchmove', (e) => {
-      //   console.log('touch move', draggingBubbleId)
-      //   system.checkTouch(draggingBubbleId, e);
-      // });
-    };
-    registerEvent();
-  }, [draggingBubbleId]);
-
-  const onOutsideClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const overlay = document.querySelector('#coordinate-system-bubbles');
-    if (e.target === overlay) {
-      system.stopFocusBubbleIfNeeded();
-    }
+  const INITIAL_STATE = generateShapes();
+  const [stars, setStars] = React.useState(INITIAL_STATE);
+  const handleDragStart = (e) => {
+    const id = e.target.id();
+    setStars(
+      stars.map((star) => {
+        return {
+          ...star,
+          isDragging: star.id === id,
+        };
+      })
+    );
+  };
+  const handleDragEnd = (e) => {
+    setStars(
+      stars.map((star) => {
+        return {
+          ...star,
+          isDragging: false,
+        };
+      })
+    );
   };
 
-  /**
-   * Trigger by 2 events: onMouseDown & onTouchStart
-   */
+  const LionImage = () => {
+    const [image] = useImage('./test.png');
+    return <Image image={image} draggable  />;
+  };
   return (
-    <div
-      className="w-full h-full"
-      id="coordinate-system-bubbles"
-      onClick={onOutsideClick}
-    >
-      {bubblesState.map((bubble) => {
-        return (
-          <div
-            onMouseEnter={() => {
-              system.stopBubble(bubble.id);
-            }}
-            onMouseLeave={(_e) => system.resumeBubble(bubble.id)}
-            // Mouse down & Touch start
-            onMouseDown={(e) => {
-              console.log('mouseDown')
-              system.startMouseDown(bubble.id, e);
-              setDraggingBubbleId(bubble.id);
-            }}
-            onTouchStart={(e) => {
-              console.log('touchStart')
-              system.startTouch(bubble.id, e);
-              setDraggingBubbleId(bubble.id);
-            }}
-            onTouchMove={(e) => {
-              console.log('touch move', draggingBubbleId)
-              system.checkTouch(draggingBubbleId, e)}}
-            onMouseUp={(_e) => {
-              console.log('mouseUp')
-              system.onMouseUp(bubble.id);
-              setDraggingBubbleId('');
-            }}
-            // onTouchEnd={(_e) => {
-            //   system.onMouseUp(bubble.id);
-            //   setDraggingBubbleId('');
-            // }}
-            key={bubble.id}
-            style={{
-              transform: `translate(${bubble.x}px, ${bubble.y}px)`,
-            }}
-            className={`w-[${bubble.size}px] h-[${bubble.size}px] rounded-full absolute `}
-          >
-            <div className="pointer-events-none select-none">
-              {props.renderItem({
-                ...bubble.data,
-                focused: system.isBubbleFocused(bubble.id),
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <Stage width={window.innerWidth} height={window.innerHeight}>
+      <Layer>
+        <Text text="Try to drag a star" />
+        {stars.map((star) => (
+          <LionImage  />
+        ))}
+      </Layer>
+    </Stage>
   );
 };
 

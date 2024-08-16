@@ -14,13 +14,16 @@
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "konva": "^9.3.14",
     "lucide-react": "^0.427.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-konva": "^18.2.10",
     "sioux-community-browse-ui-v1": "^1.1.0",
     "sioux-community-bubbles-component": "^1.0.2",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "use-image": "^1.1.1",
     "uuid": "^10.0.0"
   },
   "devDependencies": {

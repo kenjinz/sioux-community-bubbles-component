@@ -7,7 +7,7 @@ const data: ItemData[] = Array.from({ length: 60 }).map(() => ({
 }));
 function App() {
   return (
-    <div className="w-screen h-screen overflow-hidden">
+    <div className="w-screen h-screen max-h-screen overflow-hidden">
       <BubbleSystem
         itemSize={80}
         items={data}
